@@ -197,6 +197,16 @@ function showLogin(tab = 'login') {
   switchTab(tab);
 }
 
+/** Clic sur le logo : retour au dashboard si connecté, à la vitrine sinon. */
+async function goHome() {
+  const session = await recupererSession();
+  if (session) {
+    await afterAuth(session.user.id);
+  } else {
+    showLanding();
+  }
+}
+
 /* ---------------------------------------------------------------- */
 /* Rendu — LOGIN / SIGNUP                                            */
 /* ---------------------------------------------------------------- */
@@ -655,6 +665,7 @@ function showToast(msg) {
 /* Câblage des événements + démarrage                                */
 /* ---------------------------------------------------------------- */
 function wireEvents() {
+  $('brandHome').addEventListener('click', goHome);
   $('tabLogin').addEventListener('click', () => switchTab('login'));
   $('tabSignup').addEventListener('click', () => switchTab('signup'));
   $('loginForm').addEventListener('submit', handleLogin);
