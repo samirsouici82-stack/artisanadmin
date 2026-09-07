@@ -57,12 +57,6 @@ export async function recupererSession() {
   return data.session;
 }
 
-/** Email de l'utilisateur connecté — utile pour pré-remplir Stripe Checkout */
-export async function getEmailUtilisateurConnecte() {
-  const { data } = await supabase.auth.getUser();
-  return data.user?.email || '';
-}
-
 // Écoute les changements de connexion (connexion, déconnexion, expiration du token)
 export function ecouterAuth(callback) {
   return supabase.auth.onAuthStateChange((_event, session) => callback(session));
@@ -189,58 +183,20 @@ export async function enregistrerAttestationGeneree(artisanId, type) {
   if (error) throw error;
 }
 
-export async function getAbonnement(artisanId) {
-  const { data, error } = await supabase
-    .from('abonnements')
-    .select('*')
-    .eq('artisan_id', artisanId)
-    .maybeSingle();
-  if (error) throw error;
-  return data;
-}
-
-// =====================================================================
-// PAIEMENT — appelle les fonctions serverless /api/*, jamais Stripe
-// directement depuis le navigateur (la clé secrète ne quitte jamais le serveur).
-// =====================================================================
-
-export async function demarrerAbonnement({ artisanId, email, plan }) {
-  const res = await fetch('/api/create-checkout-session', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ artisanId, email, plan })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Impossible de créer la session de paiement');
-  return data.url;
-}
-
-export async function ouvrirPortailAbonnement(stripeCustomerId) {
-  const res = await fetch('/api/create-portal-session', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ stripeCustomerId })
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Impossible d\'ouvrir le portail Stripe');
-  return data.url;
-}
-
 // =====================================================================
 // CONTEXTE COMPLET — un seul appel pour construire le bon de travail
 // =====================================================================
 export async function chargerContexteHebdomadaire(artisanId) {
   const profil = await getProfil(artisanId);
 
-  const [assurances, certifications, facturesInfo, chantiers, reglementation, aides, abonnement] =
+  const [assurances, certifications, facturesInfo, chantiers, reglementation, aides] =
     await Promise.all([
       getAssurances(artisanId),
       getCertifications(artisanId),
       getFacturesEnAttente(artisanId),
       getChantiersEnCours(artisanId),
       getReglementation(profil.metier),
-      getAidesEligibles(profil.metier),
-      getAbonnement(artisanId)
+      getAidesEligibles(profil.metier)
     ]);
 
   return {
@@ -250,7 +206,6 @@ export async function chargerContexteHebdomadaire(artisanId) {
     facturesEnAttente: facturesInfo.total,
     chantiers,
     reglementation,
-    aides,
-    abonnement
+    aides
   };
 }
