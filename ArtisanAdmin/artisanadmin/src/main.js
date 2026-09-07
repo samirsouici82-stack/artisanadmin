@@ -201,7 +201,13 @@ function showLogin(tab = 'login') {
 async function goHome() {
   const session = await recupererSession();
   if (session) {
-    await afterAuth(session.user.id);
+    try {
+      await afterAuth(session.user.id);
+    } catch (err) {
+      console.warn('Session invalide, déconnexion :', err.message);
+      await deconnecter();
+      showLanding();
+    }
   } else {
     showLanding();
   }
@@ -726,11 +732,20 @@ async function init() {
 
   const session = await recupererSession();
   if (session) {
-    await afterAuth(session.user.id);
-    if (checkoutResult === 'success') {
-      showToast('Paiement confirmé ! La mise à jour de votre abonnement peut prendre quelques secondes.');
-    } else if (checkoutResult === 'cancel') {
-      showToast('Paiement annulé — vous restez sur votre période en cours.');
+    try {
+      await afterAuth(session.user.id);
+      if (checkoutResult === 'success') {
+        showToast('Paiement confirmé ! La mise à jour de votre abonnement peut prendre quelques secondes.');
+      } else if (checkoutResult === 'cancel') {
+        showToast('Paiement annulé — vous restez sur votre période en cours.');
+      }
+    } catch (err) {
+      // Session locale valide mais compte introuvable côté serveur
+      // (ex: supprimé manuellement dans Supabase) : on nettoie et on
+      // repart sur la vitrine plutôt que de rester bloqué sur une page vide.
+      console.warn('Session invalide, déconnexion :', err.message);
+      await deconnecter();
+      showLanding();
     }
   } else {
     showLanding();
